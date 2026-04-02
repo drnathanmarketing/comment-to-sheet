@@ -36,8 +36,21 @@ export function parseComments(rawText: string): CommentEntry[] {
   }
 
   blocks.forEach((block, index) => {
-    const noise = ['Reply', 'Hide', 'See translation', 'Send message', 'Facebook', 'Like', 'Comment', 'Share', 'Top fan', 'Edited'];
-    const cleanBlock = block.filter(l => !noise.includes(l));
+    const noisePatterns = [
+      /^Reply$/i,
+      /^Hide$/i,
+      /^See translation$/i,
+      /^Send message$/i,
+      /^Facebook$/i,
+      /^Like$/i,
+      /^Comment$/i,
+      /^Share$/i,
+      /^Top fan$/i,
+      /^Edited$/i,
+      /^May be an (image|illustration|doodle) of/i
+    ];
+
+    const cleanBlock = block.filter(l => !noisePatterns.some(p => p.test(l)));
 
     if (cleanBlock.length < 1) return;
 
@@ -64,34 +77,12 @@ export function parseComments(rawText: string): CommentEntry[] {
       comment = cleanBlock.slice(1).join('\n');
     }
 
-    // SPECIAL: Extract name/time from "May be an illustration/doodle" blocks if it's there
-    // These often contain "Name ... Name 2m" at the end of the line
-    const doodleLine = cleanBlock.find(l => l.toLowerCase().includes('may be an illustration') || l.toLowerCase().includes('may be a doodle'));
-    if (doodleLine) {
-       // Look for patterns like "Lin Thandar 2m" or "Kyi Phyu Khaing 4h"
-       const buriedTimeMatch = doodleLine.match(/([A-Z][a-z]+ [A-Z][a-z]+) ([0-9]+[wdhm])/);
-       if (buriedTimeMatch && buriedTimeMatch[1] && buriedTimeMatch[2]) {
-          // If our current name was generic or missing, use this
-          if (!name || name === 'Edited' || name.length < 3) {
-            name = buriedTimeMatch[1];
-          }
-          if (time === 'N/A') {
-            time = buriedTimeMatch[2];
-          }
-       }
-       // Clean the comment of these doodle descriptions
-       comment = comment.split('\n')
-         .filter(l => !l.toLowerCase().includes('may be an illustration') && !l.toLowerCase().includes('may be a doodle'))
-         .join('\n');
-    }
-
-    // Emoji tagging
-    const emojiRegex = /[\u{1F300}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1F1E6}-\u{1F1FF}]/gu;
-    if (emojiRegex.test(comment)) {
-      comment = comment.replace(emojiRegex, (match) => `${match} (emoji)`);
-    }
-    if (emojiRegex.test(name)) {
-      name = name.replace(emojiRegex, (match) => `${match} (emoji)`);
+    // Special check: If Name is 'Edited' or metadata, try picking the next line
+    if ((name === 'Edited' || name === 'Top fan') && cleanBlock.length > 1) {
+      name = cleanBlock[1];
+      if (comment.startsWith(name)) {
+        comment = comment.replace(name, '').trim();
+      }
     }
 
     if (name && name.length > 1) {
@@ -107,3 +98,4 @@ export function parseComments(rawText: string): CommentEntry[] {
 
   return entries;
 }
+
