@@ -42,6 +42,17 @@ export default function Navbar() {
       }}>
         TikTok Tool
       </Link>
+      <Link href="/viber" style={{
+        textDecoration: 'none',
+        color: pathname === '/viber' ? '#7c3aed' : 'var(--text-dim)',
+        fontWeight: pathname === '/viber' ? '700' : '500',
+        padding: '0.5rem 1rem',
+        borderRadius: '0.5rem',
+        transition: 'all 0.3s ease',
+        background: pathname === '/viber' ? 'rgba(124, 58, 237, 0.1)' : 'transparent'
+      }}>
+        Viber Insights
+      </Link>
     </nav>
   );
 }
