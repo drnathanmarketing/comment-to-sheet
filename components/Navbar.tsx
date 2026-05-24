@@ -53,6 +53,28 @@ export default function Navbar() {
       }}>
         Viber Insights
       </Link>
+      <Link href="/bold-text-maker" style={{
+        textDecoration: 'none',
+        color: pathname === '/bold-text-maker' ? 'var(--accent)' : 'var(--text-dim)',
+        fontWeight: pathname === '/bold-text-maker' ? '700' : '500',
+        padding: '0.5rem 1rem',
+        borderRadius: '0.5rem',
+        transition: 'all 0.3s ease',
+        background: pathname === '/bold-text-maker' ? 'rgba(37, 99, 235, 0.1)' : 'transparent'
+      }}>
+        Bold Text Maker
+      </Link>
+      <Link href="/meta-report" style={{
+        textDecoration: 'none',
+        color: pathname === '/meta-report' ? 'var(--accent)' : 'var(--text-dim)',
+        fontWeight: pathname === '/meta-report' ? '700' : '500',
+        padding: '0.5rem 1rem',
+        borderRadius: '0.5rem',
+        transition: 'all 0.3s ease',
+        background: pathname === '/meta-report' ? 'rgba(37, 99, 235, 0.1)' : 'transparent'
+      }}>
+        Meta Ads Report
+      </Link>
     </nav>
   );
 }
