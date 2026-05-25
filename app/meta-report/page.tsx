@@ -33,11 +33,18 @@ export default function MetaReportPage() {
     reachIdx: -1,
     impressionsIdx: -1,
     cprIdx: -1,
-    frequencyIdx: -1
+    frequencyIdx: -1,
+    linkClicksIdx: -1,
+    messagesIdx: -1,
+    costPerMessageIdx: -1,
+    newMessagesIdx: -1,
+    costPerNewMessageIdx: -1,
+    viewsIdx: -1
   });
 
   // Clean parsed data state
   const [parsedData, setParsedData] = useState<MetaAdRow[]>([]);
+  const [exportFontSize, setExportFontSize] = useState<number>(10); // Default 10 (size 10 on Google Sheets)
   const [error, setError] = useState<string>('');
   const [dragging, setDragging] = useState(false);
 
@@ -56,14 +63,12 @@ export default function MetaReportPage() {
     setMapping(autoMap);
 
     // ── Auto-advance: skip mapping UI if critical columns are detected ──
-    // Required: at least one identity col + reach + impressions
     const hasIdentity   = autoMap.campaignNameIdx !== -1 || autoMap.adNameIdx !== -1;
     const hasReach      = autoMap.reachIdx !== -1;
     const hasImpressions = autoMap.impressionsIdx !== -1;
     const mappedCount   = Object.values(autoMap).filter(v => v !== -1).length;
 
     if (hasIdentity && hasReach && hasImpressions && mappedCount >= 4) {
-      // Confident auto-detection — parse and jump straight to editing
       try {
         const cleanData = parseCleanRows(rows, hIdx, autoMap);
         if (cleanData.length > 0) {
@@ -75,10 +80,8 @@ export default function MetaReportPage() {
       } catch { /* fall through to mapping UI */ }
     }
 
-    // Fallback: not enough columns detected — show manual mapping screen
     setPhase('mapping');
   }, []);
-
 
   // ─── Phase 1a: CSV Upload Handling ────────────────────────────────────────
   const handleCSVParse = useCallback((file: File) => {
@@ -101,14 +104,12 @@ export default function MetaReportPage() {
       try {
         const data = evt.target?.result;
         const workbook = XLSX.read(data, { type: 'array' });
-        // Use the first sheet
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        // Convert to array-of-arrays with raw strings (header: 1 = no header object)
         const rows: string[][] = XLSX.utils.sheet_to_json<string[]>(worksheet, {
           header: 1,
           defval: '',
-          raw: false, // keep everything as formatted strings so cleanNumeric works
+          raw: false,
         });
         processRows(rows, file.name);
       } catch (e) {
@@ -161,7 +162,7 @@ export default function MetaReportPage() {
     try {
       const cleanData = parseCleanRows(rawRows, headerRowIdx, mapping);
       if (cleanData.length === 0) {
-        setError('No valid ad rows were found. Check your filters (we automatically skip rows with empty campaigns or the word "Total").');
+        setError('No valid ad rows were found. Check your filters (we automatically skip totals).');
         return;
       }
       setParsedData(cleanData);
@@ -213,29 +214,88 @@ export default function MetaReportPage() {
       impressions: 1200,
       cpr: 0.5,
       frequency: 1.1,
-      objective: 'Engagement'
+      objective: 'Engagement',
+      linkClicks: 50,
+      messages: 0,
+      costPerMessage: 0,
+      newMessages: 0,
+      costPerNewMessage: 0,
+      views: 0
     };
     setParsedData(prev => [...prev, newRow]);
   };
 
+  // Helper formatting function for clipboard exports
+  const formatCurr = (val: number) => val > 0 ? `$${val.toFixed(2)}` : "—";
+  const formatNum = (val: number) => val > 0 ? val.toLocaleString() : "—";
+
+  // Helper to obtain computed metrics dynamically on the fly
+  const getComputedMetrics = (ad: MetaAdRow) => {
+    // 1. Messaging costs with robust parsed fallbacks to cpr
+    const cpMsg = ad.costPerMessage || (ad.objective === 'Message' ? ad.cpr : 0);
+    const cpNewMsg = ad.costPerNewMessage || cpMsg;
+
+    // 2. Video plays fallbacks
+    const viewsVal = ad.views || (ad.objective === 'Thruplay' ? ad.results : 0);
+    const resToViewsRatio = viewsVal > 0 ? (ad.results / viewsVal) * 100 : 0;
+
+    return {
+      cpMsg,
+      cpNewMsg,
+      viewsVal,
+      resToViewsRatio
+    };
+  };
+
   // ─── Copy Data Payload for Native PowerPoint Excel Graphs ──────────────────
   const copyDataPayload = useCallback((ad: MetaAdRow) => {
-    // 1. Prepare raw rows and formats
+    const computed = getComputedMetrics(ad);
+
+    // 1. Prepare raw rows and formats for the slide deck table
     const headers = ["Metric", "Value"];
     const rows = [
-      ["Reach", ad.reach.toLocaleString()],
-      ["Impressions", ad.impressions.toLocaleString()],
-      [ad.objective === 'Awareness' ? 'Reach' : ad.resultType || 'Results', ad.results.toLocaleString()],
-      ["CPR ($)", ad.cpr > 0 ? `$${ad.cpr.toLocaleString()}` : "—"],
-      ["Frequency", ad.frequency.toFixed(2)]
+      ["Reach", formatNum(ad.reach)],
+      ["Impressions", formatNum(ad.impressions)],
+      ["Frequency", ad.frequency > 0 ? ad.frequency.toFixed(2) : "—"],
     ];
+
+    // Deduplicated Result and Cost Rows based on objective
+    if (ad.objective === 'Awareness') {
+      rows.push(
+        ["Cost Per Result (CPR)", formatCurr(ad.cpr)],
+        ["Link Clicks", formatNum(ad.linkClicks)]
+      );
+    } else if (ad.objective === 'Message') {
+      rows.push(
+        ["Link Clicks", formatNum(ad.linkClicks)],
+        ["Message Conversations Started", formatNum(ad.messages || ad.results)],
+        ["Cost per Messaging Conversation", formatCurr(computed.cpMsg)],
+        ["New Message Contacts", formatNum(ad.newMessages || ad.messages || ad.results)],
+        ["Cost per New Messaging Connection", formatCurr(computed.cpNewMsg)]
+      );
+    } else if (ad.objective === 'Thruplay') {
+      rows.push(
+        ["Cost Per Result (CPR)", formatCurr(ad.cpr)],
+        ["Link Clicks", formatNum(ad.linkClicks)],
+        ["Views / Video Plays", formatNum(computed.viewsVal)],
+        ["Result / Views Ratio", computed.resToViewsRatio > 0 ? `${computed.resToViewsRatio.toFixed(2)}%` : "—"]
+      );
+    } else {
+      // Default: Engagement, Page Follower, etc.
+      rows.push(
+        [ad.resultType || 'Results', formatNum(ad.results)],
+        ["Cost Per Result (CPR)", formatCurr(ad.cpr)],
+        ["Link Clicks", formatNum(ad.linkClicks)]
+      );
+    }
 
     // Format plain text TSV for Excel/Google Sheets
     const tsv = [headers.join('\t'), ...rows.map(r => r.join('\t'))].join('\n');
 
     // Format high-fidelity HTML table for PowerPoint/Google Slides
+    const cssPx = exportFontSize * (4 / 3);
     const htmlTable = `
-      <table style="border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; width: 300px; border: 1px solid #e2e8f0; font-size: 13px;">
+      <table style="border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; width: 360px; border: 1px solid #e2e8f0; font-size: ${cssPx}px;">
         <thead>
           <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
             <th style="border: 1px solid #e2e8f0; padding: 6px 10px; text-align: left; font-weight: 700; color: #475569;">Metric</th>
@@ -277,7 +337,7 @@ export default function MetaReportPage() {
     const tableBtn = document.getElementById(`copy-data-table-btn-${ad.id}`);
     if (cardBtn) {
       const origText = cardBtn.innerHTML;
-      cardBtn.innerHTML = '✓ Copied!';
+      cardBtn.innerHTML = '✓ Copied All Metrics!';
       cardBtn.style.color = '#16a34a';
       cardBtn.style.background = '#dcfce7';
       cardBtn.style.borderColor = '#bbf7d0';
@@ -301,7 +361,7 @@ export default function MetaReportPage() {
         tableBtn.style.borderColor = '#bae6fd';
       }, 1500);
     }
-  }, []);
+  }, [exportFontSize]);
 
   // ─── Chart Card Max Visual Limits Calculation ─────────────────────────────
   const maxValues = useMemo(() => {
@@ -315,7 +375,7 @@ export default function MetaReportPage() {
   }, [parsedData]);
 
   return (
-    <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 2rem 4rem 2rem' }}>
+    <main style={{ maxWidth: '1440px', margin: '0 auto', padding: '0 2rem 4rem 2rem' }}>
       
       {/* ── Page Title / Header ── */}
       <header style={{ textAlign: 'center', marginBottom: '3rem', animation: 'fadeInDown 0.7s ease-out' }}>
@@ -332,7 +392,7 @@ export default function MetaReportPage() {
           }}>Meta Ads Report Automator</h1>
         </div>
         <p style={{ color: '#64748b', fontSize: '1.1rem', maxWidth: '580px', margin: '0 auto' }}>
-          Ingest messy Meta Ads CSV exports, dynamically categorize campaign objectives, edit values, and generate PowerPoint decks with dual-axis charts.
+          Ingest messy Meta Ads spreadsheets, automatically detect standard and advanced performance metrics, review custom dashboards, and copy rich formats.
         </p>
       </header>
 
@@ -374,7 +434,6 @@ export default function MetaReportPage() {
             <p style={{ color: '#64748b', maxWidth: '440px', fontSize: '0.95rem' }}>
               Supports <strong>CSV</strong> and <strong>Excel</strong> exports (.csv, .xlsx, .xls). We'll automatically skip totals, strip currencies, and recognise campaign metrics.
             </p>
-            {/* Format badges */}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
               {['.csv', '.xlsx', '.xls'].map(ext => (
                 <span key={ext} style={{
@@ -417,7 +476,7 @@ export default function MetaReportPage() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
             {Object.keys(mapping).map((field) => {
               const fieldKey = field as keyof ColumnMapping;
               const fieldLabels: Record<keyof ColumnMapping, string> = {
@@ -428,7 +487,13 @@ export default function MetaReportPage() {
                 reachIdx: "Reach",
                 impressionsIdx: "Impressions",
                 cprIdx: "Cost Per Result (CPR)",
-                frequencyIdx: "Frequency"
+                frequencyIdx: "Frequency",
+                linkClicksIdx: "Link Clicks",
+                messagesIdx: "Messaging Conversations",
+                costPerMessageIdx: "Cost Per Messaging Conversation",
+                newMessagesIdx: "New Message Contacts",
+                costPerNewMessageIdx: "Cost Per New Messaging Connection",
+                viewsIdx: "Video Plays / Views"
               };
 
               return (
@@ -504,6 +569,22 @@ export default function MetaReportPage() {
               <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Active Ads List</span>
               <p style={{ fontWeight: 700, color: '#1e293b' }}>{parsedData.length} records</p>
             </div>
+
+            <div>
+              <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Google Sheets Font Size</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                <input
+                  type="range"
+                  min="7.5"
+                  max="24"
+                  step="0.5"
+                  value={exportFontSize}
+                  onChange={e => setExportFontSize(parseFloat(e.target.value))}
+                  style={{ width: '100px', cursor: 'pointer', accentColor: '#2563eb' }}
+                />
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2563eb' }}>{exportFontSize}</span>
+              </div>
+            </div>
             
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button
@@ -518,48 +599,61 @@ export default function MetaReportPage() {
 
           {/* Inline Review Spreadsheet Grid */}
           <div className="glass-panel" style={{ marginBottom: '3rem' }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1e293b', marginBottom: '1rem' }}>
-              ✏️ Verify and Edit Mapped Data Grid
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#1e293b' }}>
+                  ✏️ Verify and Edit Mapped Data Grid
+                </h2>
+                <p style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  Horizontal scrolling available. Click any value to tweak.
+                </p>
+              </div>
+            </div>
             
             <div className="table-wrapper" style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: '0.75rem' }}>
-              <table style={{ minWidth: '1000px', fontSize: '0.88rem' }}>
+              <table style={{ minWidth: '1350px', fontSize: '0.82rem' }}>
                 <thead>
-                  <tr>
-                    <th style={{ width: '180px' }}>Campaign Name</th>
-                    <th style={{ width: '180px' }}>Ad Name / Post ID</th>
-                    <th style={{ width: '150px' }}>Ad Objective</th>
-                    <th style={{ width: '110px' }}>Reach</th>
-                    <th style={{ width: '110px' }}>Impressions</th>
-                    <th style={{ width: '120px' }}>Results Value</th>
-                    <th style={{ width: '100px' }}>CPR ($)</th>
-                    <th style={{ width: '90px' }}>Frequency</th>
-                    <th style={{ width: '90px', textAlign: 'center' }}>Actions</th>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <th style={{ width: '180px', padding: '0.75rem 0.5rem' }}>Campaign Name</th>
+                    <th style={{ width: '180px', padding: '0.75rem 0.5rem' }}>Ad Name / Post ID</th>
+                    <th style={{ width: '130px', padding: '0.75rem 0.5rem' }}>Objective</th>
+                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Reach</th>
+                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Impressions</th>
+                    <th style={{ width: '70px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Freq</th>
+                    <th style={{ width: '100px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Results</th>
+                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>CPR ($)</th>
+                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Link Clicks</th>
+                    <th style={{ width: '95px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Msg Conv</th>
+                    <th style={{ width: '95px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Cost/Msg ($)</th>
+                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>New Message</th>
+                    <th style={{ width: '110px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Cost/New Msg ($)</th>
+                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Video Views</th>
+                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {parsedData.map((ad) => (
                     <tr key={ad.id}>
                       {/* Campaign Name */}
-                      <td style={{ padding: '0.4rem 0.6rem' }}>
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
                         <input
                           type="text"
                           value={ad.campaignName}
                           onChange={e => updateRowField(ad.id, 'campaignName', e.target.value)}
                           className="editable-input"
-                          style={{ fontSize: '0.85rem' }}
+                          style={{ fontSize: '0.8rem' }}
                         />
                       </td>
                       
-                      {/* Ad Name + Copy button */}
-                      <td style={{ padding: '0.4rem 0.6rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      {/* Ad Name */}
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                           <input
                             type="text"
                             value={ad.adName}
                             onChange={e => updateRowField(ad.id, 'adName', e.target.value)}
                             className="editable-input"
-                            style={{ fontSize: '0.85rem', fontWeight: 600, flex: 1, minWidth: 0 }}
+                            style={{ fontSize: '0.8rem', fontWeight: 600, flex: 1, minWidth: 0 }}
                           />
                           <button
                             title="Copy Post ID"
@@ -576,11 +670,10 @@ export default function MetaReportPage() {
                               background: 'transparent',
                               border: '1px solid #cbd5e1',
                               borderRadius: '0.3rem',
-                              padding: '0.15rem 0.35rem',
+                              padding: '0.1rem 0.25rem',
                               cursor: 'pointer',
-                              fontSize: '0.85rem',
+                              fontSize: '0.75rem',
                               color: '#64748b',
-                              lineHeight: 1,
                               transition: 'all 0.2s',
                             }}
                             onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#2563eb'; }}
@@ -589,17 +682,17 @@ export default function MetaReportPage() {
                         </div>
                       </td>
 
-                      {/* Objective select dropdown */}
-                      <td style={{ padding: '0.4rem 0.6rem' }}>
+                      {/* Objective */}
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
                         <select
                           value={ad.objective}
                           onChange={e => updateRowField(ad.id, 'objective', e.target.value)}
                           className="editable-input"
                           style={{
-                            fontSize: '0.85rem',
+                            fontSize: '0.8rem',
                             fontWeight: 600,
                             color: '#4f46e5',
-                            padding: '0.3rem',
+                            padding: '0.2rem',
                             border: '1px solid #e2e8f0',
                             background: '#f8fafc'
                           }}
@@ -613,69 +706,135 @@ export default function MetaReportPage() {
                       </td>
 
                       {/* Reach */}
-                      <td style={{ padding: '0.4rem 0.6rem' }}>
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
                         <input
                           type="text"
                           value={ad.reach}
                           onChange={e => updateRowField(ad.id, 'reach', cleanNumeric(e.target.value))}
                           className="editable-input"
-                          style={{ fontSize: '0.85rem', textAlign: 'right' }}
+                          style={{ fontSize: '0.8rem', textAlign: 'right' }}
                         />
                       </td>
 
                       {/* Impressions */}
-                      <td style={{ padding: '0.4rem 0.6rem' }}>
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
                         <input
                           type="text"
                           value={ad.impressions}
                           onChange={e => updateRowField(ad.id, 'impressions', cleanNumeric(e.target.value))}
                           className="editable-input"
-                          style={{ fontSize: '0.85rem', textAlign: 'right' }}
-                        />
-                      </td>
-
-                      {/* Results (renamed based on objective) */}
-                      <td style={{ padding: '0.4rem 0.6rem' }}>
-                        {ad.objective === 'Awareness' ? (
-                          <span style={{ color: '#94a3b8', fontSize: '0.82rem', paddingLeft: '0.5rem' }}>— (Reach)</span>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                            <input
-                              type="text"
-                              value={ad.results}
-                              onChange={e => updateRowField(ad.id, 'results', cleanNumeric(e.target.value))}
-                              className="editable-input"
-                              style={{ fontSize: '0.85rem', textAlign: 'right', flex: 1 }}
-                            />
-                            <span style={{ fontSize: '0.7rem', color: '#64748b', whiteSpace: 'nowrap' }}>{ad.resultType}</span>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* CPR */}
-                      <td style={{ padding: '0.4rem 0.6rem' }}>
-                        <input
-                          type="text"
-                          value={ad.cpr}
-                          onChange={e => updateRowField(ad.id, 'cpr', cleanNumeric(e.target.value))}
-                          className="editable-input"
-                          style={{ fontSize: '0.85rem', textAlign: 'right' }}
+                          style={{ fontSize: '0.8rem', textAlign: 'right' }}
                         />
                       </td>
 
                       {/* Frequency */}
-                      <td style={{ padding: '0.4rem 0.6rem' }}>
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
                         <input
                           type="text"
                           value={ad.frequency}
                           onChange={e => updateRowField(ad.id, 'frequency', cleanNumeric(e.target.value))}
                           className="editable-input"
-                          style={{ fontSize: '0.85rem', textAlign: 'right' }}
+                          style={{ fontSize: '0.8rem', textAlign: 'right' }}
+                        />
+                      </td>
+
+                      {/* Results */}
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
+                        {ad.objective === 'Awareness' ? (
+                          <span style={{ color: '#94a3b8', fontSize: '0.78rem', paddingLeft: '0.4rem' }}>— (Reach)</span>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.1rem' }}>
+                            <input
+                              type="text"
+                              value={ad.results}
+                              onChange={e => updateRowField(ad.id, 'results', cleanNumeric(e.target.value))}
+                              className="editable-input"
+                              style={{ fontSize: '0.8rem', textAlign: 'right', flex: 1, minWidth: 0 }}
+                            />
+                            <span style={{ fontSize: '0.65rem', color: '#64748b', whiteSpace: 'nowrap' }}>{ad.resultType}</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* CPR */}
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
+                        <input
+                          type="text"
+                          value={ad.cpr}
+                          onChange={e => updateRowField(ad.id, 'cpr', cleanNumeric(e.target.value))}
+                          className="editable-input"
+                          style={{ fontSize: '0.8rem', textAlign: 'right' }}
+                        />
+                      </td>
+
+                      {/* Link Clicks */}
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
+                        <input
+                          type="text"
+                          value={ad.linkClicks}
+                          onChange={e => updateRowField(ad.id, 'linkClicks', cleanNumeric(e.target.value))}
+                          className="editable-input"
+                          style={{ fontSize: '0.8rem', textAlign: 'right' }}
+                        />
+                      </td>
+
+                      {/* Messaging Conversations */}
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
+                        <input
+                          type="text"
+                          value={ad.messages}
+                          onChange={e => updateRowField(ad.id, 'messages', cleanNumeric(e.target.value))}
+                          className="editable-input"
+                          style={{ fontSize: '0.8rem', textAlign: 'right' }}
+                        />
+                      </td>
+
+                      {/* Cost Per Message */}
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
+                        <input
+                          type="text"
+                          value={ad.costPerMessage}
+                          onChange={e => updateRowField(ad.id, 'costPerMessage', cleanNumeric(e.target.value))}
+                          className="editable-input"
+                          style={{ fontSize: '0.8rem', textAlign: 'right' }}
+                        />
+                      </td>
+
+                      {/* New Messaging Contacts */}
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
+                        <input
+                          type="text"
+                          value={ad.newMessages}
+                          onChange={e => updateRowField(ad.id, 'newMessages', cleanNumeric(e.target.value))}
+                          className="editable-input"
+                          style={{ fontSize: '0.8rem', textAlign: 'right' }}
+                        />
+                      </td>
+
+                      {/* Cost Per New Messaging Connection */}
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
+                        <input
+                          type="text"
+                          value={ad.costPerNewMessage}
+                          onChange={e => updateRowField(ad.id, 'costPerNewMessage', cleanNumeric(e.target.value))}
+                          className="editable-input"
+                          style={{ fontSize: '0.8rem', textAlign: 'right' }}
+                        />
+                      </td>
+
+                      {/* Views / Video Plays */}
+                      <td style={{ padding: '0.3rem 0.4rem' }}>
+                        <input
+                          type="text"
+                          value={ad.views}
+                          onChange={e => updateRowField(ad.id, 'views', cleanNumeric(e.target.value))}
+                          className="editable-input"
+                          style={{ fontSize: '0.8rem', textAlign: 'right' }}
                         />
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '0.4rem 0.6rem', textAlign: 'center' }}>
+                      <td style={{ padding: '0.3rem 0.4rem', textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
                           <button
                             onClick={() => copyDataPayload(ad)}
@@ -685,8 +844,8 @@ export default function MetaReportPage() {
                               border: '1px solid #bae6fd',
                               color: '#0284c7',
                               cursor: 'pointer',
-                              fontSize: '0.85rem',
-                              padding: '0.25rem 0.4rem',
+                              fontSize: '0.8rem',
+                              padding: '0.2rem 0.35rem',
                               borderRadius: '0.25rem',
                               transition: 'all 0.2s',
                               display: 'inline-flex',
@@ -696,9 +855,9 @@ export default function MetaReportPage() {
                             }}
                             onMouseEnter={e => e.currentTarget.style.background = '#e0f2fe'}
                             onMouseLeave={e => e.currentTarget.style.background = '#f0f9ff'}
-                            title="Copy data for slides"
+                            title="Copy all metrics for slides"
                           >
-                            📊
+                            📋
                           </button>
                           <button
                             onClick={() => deleteRow(ad.id)}
@@ -707,8 +866,8 @@ export default function MetaReportPage() {
                               border: 'none',
                               color: '#ef4444',
                               cursor: 'pointer',
-                              fontSize: '1.1rem',
-                              padding: '0.25rem 0.4rem',
+                              fontSize: '1rem',
+                              padding: '0.2rem 0.35rem',
                               borderRadius: '0.25rem',
                               transition: 'all 0.2s',
                               display: 'inline-flex',
@@ -737,7 +896,7 @@ export default function MetaReportPage() {
               📊 Interactive Performance Visualizations
             </h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '1.5rem' }}>
               {parsedData.map((ad, idx) => {
                 const reachPct = (ad.reach / maxValues.reach) * 100;
                 const impPct = (ad.impressions / maxValues.impressions) * 100;
@@ -754,6 +913,7 @@ export default function MetaReportPage() {
                 };
 
                 const badge = badgeColors[ad.objective];
+                const computed = getComputedMetrics(ad);
 
                 return (
                   <div
@@ -814,7 +974,7 @@ export default function MetaReportPage() {
                               cursor: 'pointer',
                               fontSize: '0.85rem',
                               color: '#64748b',
-                              padding: '0.1rem 0.2rem',
+                              padding: '0.1rem 0.2/rem',
                               lineHeight: 1,
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -849,8 +1009,8 @@ export default function MetaReportPage() {
                       </span>
                     </div>
 
-                    {/* Progress Bar Visualizer */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    {/* Progress Bar Visualizer for Reach, Impressions, Results */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.25rem' }}>
                       
                       {/* Reach */}
                       <div>
@@ -874,7 +1034,7 @@ export default function MetaReportPage() {
                         </div>
                       </div>
 
-                      {/* Results (conditional) */}
+                      {/* Results */}
                       {ad.objective !== 'Awareness' && (
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#475569', marginBottom: '0.25rem' }}>
@@ -886,66 +1046,129 @@ export default function MetaReportPage() {
                           </div>
                         </div>
                       )}
-
-                      {/* CPR & Frequency (Side-by-side micro bars) */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.25rem' }}>
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#475569', marginBottom: '0.2rem' }}>
-                            <span>CPR</span>
-                            <strong>{ad.cpr > 0 ? `$${ad.cpr.toLocaleString()}` : '—'}</strong>
-                          </div>
-                          <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ width: `${cprPct}%`, height: '100%', background: '#f59e0b', borderRadius: '3px', transition: 'width 0.5s ease' }} />
-                          </div>
-                        </div>
-
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#475569', marginBottom: '0.2rem' }}>
-                            <span>Frequency</span>
-                            <strong>{ad.frequency.toFixed(2)}</strong>
-                          </div>
-                          <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ width: `${freqPct}%`, height: '100%', background: '#0ea5e9', borderRadius: '3px', transition: 'width 0.5s ease' }} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Premium Action Toolbar inside Card */}
-                      <div style={{
-                        display: 'flex',
-                        marginTop: '1.25rem',
-                        paddingTop: '0.85rem',
-                        borderTop: '1px solid #f1f5f9'
-                      }}>
-                        <button
-                          onClick={() => copyDataPayload(ad)}
-                          id={`copy-data-card-btn-${ad.id}`}
-                          style={{
-                            flex: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.3rem',
-                            fontSize: '0.78rem',
-                            fontWeight: 600,
-                            color: '#0284c7',
-                            background: '#f0f9ff',
-                            border: '1px solid #bae6fd',
-                            borderRadius: '0.375rem',
-                            padding: '0.4rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            lineHeight: 1
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#e0f2fe'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = '#f0f9ff'; }}
-                          title="Copy metrics as TSV for PowerPoint Excel graphs"
-                        >
-                          📊 Copy Data
-                        </button>
-                      </div>
-
                     </div>
+
+                    {/* Premium Grid inside single post card */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '0.65rem',
+                      marginTop: '0.75rem',
+                      padding: '0.75rem',
+                      background: '#f8fafc',
+                      borderRadius: '0.75rem',
+                      border: '1px solid #f1f5f9'
+                    }}>
+                      {/* Metric 1: Frequency */}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>Frequency</span>
+                        <strong style={{ fontSize: '0.88rem', color: '#1e293b', marginTop: '0.1rem' }}>
+                          {ad.frequency > 0 ? ad.frequency.toFixed(2) : "—"}
+                        </strong>
+                      </div>
+
+                      {/* Metric 2: Cost Per Result (CPR) - ALWAYS VISIBLE */}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>Cost per Result (CPR)</span>
+                        <strong style={{ fontSize: '0.88rem', color: '#4f46e5', marginTop: '0.1rem' }}>
+                          {ad.cpr > 0 ? `$${ad.cpr.toFixed(2)}` : "—"}
+                        </strong>
+                      </div>
+
+                      {/* Metric 3: Link Clicks */}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>Link Clicks</span>
+                        <strong style={{ fontSize: '0.88rem', color: '#1e293b', marginTop: '0.1rem' }}>
+                          {formatNum(ad.linkClicks)}
+                        </strong>
+                      </div>
+
+                      <div style={{ display: 'none' }}></div>
+
+                      {/* Messaging-specific Metrics */}
+                      {ad.objective === 'Message' && (
+                        <>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>Messaging Conv</span>
+                            <strong style={{ fontSize: '0.88rem', color: '#1e293b', marginTop: '0.1rem' }}>
+                              {formatNum(ad.messages || ad.results)}
+                            </strong>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>New Msg Contacts</span>
+                            <strong style={{ fontSize: '0.88rem', color: '#1e293b', marginTop: '0.1rem' }}>
+                              {formatNum(ad.newMessages || ad.messages || ad.results)}
+                            </strong>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>Cost per Msg Conv</span>
+                            <strong style={{ fontSize: '0.88rem', color: '#1e293b', marginTop: '0.1rem' }}>
+                              {formatCurr(computed.cpMsg)}
+                            </strong>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>Cost per New Msg Connection</span>
+                            <strong style={{ fontSize: '0.88rem', color: '#1e293b', marginTop: '0.1rem' }}>
+                              {formatCurr(computed.cpNewMsg)}
+                            </strong>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Thruplay-specific Metrics */}
+                      {ad.objective === 'Thruplay' && (
+                        <>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>Views / Video Plays</span>
+                            <strong style={{ fontSize: '0.88rem', color: '#1e293b', marginTop: '0.1rem' }}>
+                              {formatNum(computed.viewsVal)}
+                            </strong>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>Result / Views Ratio</span>
+                            <strong style={{ fontSize: '0.88rem', color: '#1e293b', marginTop: '0.1rem' }}>
+                              {computed.resToViewsRatio > 0 ? `${computed.resToViewsRatio.toFixed(2)}%` : "—"}
+                            </strong>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Premium Action Toolbar inside Card */}
+                    <div style={{
+                      display: 'flex',
+                      marginTop: '0.5rem',
+                      paddingTop: '0.75rem',
+                      borderTop: '1px solid #f1f5f9'
+                    }}>
+                      <button
+                        onClick={() => copyDataPayload(ad)}
+                        id={`copy-data-card-btn-${ad.id}`}
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.3rem',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          color: '#0284c7',
+                          background: '#f0f9ff',
+                          border: '1px solid #bae6fd',
+                          borderRadius: '0.375rem',
+                          padding: '0.45rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          lineHeight: 1
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#e0f2fe'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#f0f9ff'; }}
+                        title="Copy all metrics to slide clipboard"
+                      >
+                        📊 Copy All Metrics
+                      </button>
+                    </div>
+
                   </div>
                 );
               })}

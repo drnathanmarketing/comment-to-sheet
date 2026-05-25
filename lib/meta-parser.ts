@@ -19,6 +19,12 @@ export interface MetaAdRow {
   cpr: number;
   frequency: number;
   objective: 'Awareness' | 'Engagement' | 'Page Follower' | 'Thruplay' | 'Message';
+  linkClicks: number;
+  messages: number;
+  costPerMessage: number;
+  newMessages: number;
+  costPerNewMessage: number; // Added Cost per New Messaging Connection
+  views: number;
 }
 
 export interface ColumnMapping {
@@ -30,6 +36,12 @@ export interface ColumnMapping {
   impressionsIdx: number;
   cprIdx: number;
   frequencyIdx: number;
+  linkClicksIdx: number;
+  messagesIdx: number;
+  costPerMessageIdx: number;
+  newMessagesIdx: number;
+  costPerNewMessageIdx: number; // Added Cost per New Messaging Connection Index
+  viewsIdx: number;
 }
 
 // ─── String / Numeric cleaners ────────────────────────────────────────────────
@@ -79,7 +91,6 @@ const META_HEADER_KEYWORDS = [
   'result type',
   // Cost
   'cost per result',
-  'amount spent',
   // Delivery
   'delivery',
   // Date range columns
@@ -87,12 +98,12 @@ const META_HEADER_KEYWORDS = [
   'reporting ends',
   // Other common columns
   'clicks (all)',
-  'cpc (all)',
-  'cpm (cost per 1,000 impressions)',
   'unique clicks (all)',
-  'post engagement',
   'page likes',
   'messaging conversations started',
+  'cost per messaging conversation started',
+  'new messaging connections',
+  'cost per new messaging connection',
   'thruplay',
   'video plays',
   'link clicks',
@@ -122,13 +133,6 @@ export function findHeaderRow(rows: string[][]): { index: number; headers: strin
 
 /**
  * Maps header strings to column indices using exact-match-first, then partial.
- *
- * Meta's real exported column names (English UI, 2024-2025):
- *   Campaign name | Ad set name | Ad name | Delivery
- *   Impressions | Reach | Frequency
- *   Results | Result indicator
- *   Cost per result | Amount spent (MMK) | Amount spent (USD)
- *   Reporting starts | Reporting ends
  */
 export function autoMapColumns(headers: string[]): ColumnMapping {
   const lower = headers.map(h => cleanString(h).toLowerCase());
@@ -167,6 +171,29 @@ export function autoMapColumns(headers: string[]): ColumnMapping {
     // "Cost per result" is the exact Meta column name
     cprIdx:           best(['cost per result', 'cost/result', 'cpr']),
     frequencyIdx:     best(['frequency']),
+    // Auto-detection
+    linkClicksIdx:    best(['link clicks', 'link click', 'clicks (all)', 'clicks']),
+    messagesIdx:      best(['messaging conversations started', 'messaging conversations', 'messages', 'conversations started', 'conversations']),
+    costPerMessageIdx: best([
+      'cost per messaging conversation started',
+      'cost per messaging conversation',
+      'cost per messaging',
+      'cost per message',
+      'cost per conversation',
+      'cost/messaging',
+      'cost/message',
+      'cost/conv'
+    ]),
+    newMessagesIdx:   best(['new messaging connections', 'new messaging contacts', 'new messaging', 'new message', 'new contacts']),
+    costPerNewMessageIdx: best([
+      'cost per new messaging connection',
+      'cost per new messaging contact',
+      'cost per new messaging',
+      'cost per new message',
+      'cost/new messaging',
+      'cost/new message'
+    ]),
+    viewsIdx:         best(['video plays', 'views', 'thruplays', 'video views', '3-second video plays', '2-second video plays']),
   };
 }
 
@@ -175,17 +202,6 @@ export function autoMapColumns(headers: string[]): ColumnMapping {
 /**
  * Maps Meta's "Result indicator" values (and campaign name hints) to our
  * five internal objective types.
- *
- * Known Meta Result indicator values (English UI):
- *   "ThruPlay"
- *   "Post engagement"
- *   "Page likes"
- *   "Messaging conversations started"
- *   "Link clicks"
- *   "Reach"
- *   "Impressions"
- *   "2-second continuous video views"
- *   "Video plays at 25%/50%/75%/95%/100%"
  */
 export function detectObjective(
   resultType: string,
@@ -278,6 +294,14 @@ export function parseCleanRows(
     const cpr         = mapping.cprIdx         !== -1 ? cleanNumeric(rawRow[mapping.cprIdx])         : 0;
     const frequency   = mapping.frequencyIdx   !== -1 ? cleanNumeric(rawRow[mapping.frequencyIdx])   : 0;
 
+    // Parse metrics
+    const linkClicks  = mapping.linkClicksIdx  !== -1 ? cleanNumeric(rawRow[mapping.linkClicksIdx])  : 0;
+    const messages    = mapping.messagesIdx    !== -1 ? cleanNumeric(rawRow[mapping.messagesIdx])    : 0;
+    const costPerMessage = mapping.costPerMessageIdx !== -1 ? cleanNumeric(rawRow[mapping.costPerMessageIdx]) : 0;
+    const newMessages = mapping.newMessagesIdx !== -1 ? cleanNumeric(rawRow[mapping.newMessagesIdx]) : 0;
+    const costPerNewMessage = mapping.costPerNewMessageIdx !== -1 ? cleanNumeric(rawRow[mapping.costPerNewMessageIdx]) : 0;
+    const views       = mapping.viewsIdx       !== -1 ? cleanNumeric(rawRow[mapping.viewsIdx])       : 0;
+
     const objective = detectObjective(resultType, campaignName, adName);
 
     parsedRows.push({
@@ -291,6 +315,12 @@ export function parseCleanRows(
       cpr,
       frequency,
       objective,
+      linkClicks,
+      messages,
+      costPerMessage,
+      newMessages,
+      costPerNewMessage,
+      views,
     });
   }
 
