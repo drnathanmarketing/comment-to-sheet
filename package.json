@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "groq-sdk": "^1.2.1",
     "next": "16.2.2",
     "papaparse": "^5.5.3",
     "pptxgenjs": "^4.0.1",

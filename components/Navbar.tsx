@@ -64,6 +64,17 @@ export default function Navbar() {
       }}>
         Bold Text Maker
       </Link>
+      <Link href="/emojilizer" style={{
+        textDecoration: 'none',
+        color: pathname === '/emojilizer' ? 'var(--accent)' : 'var(--text-dim)',
+        fontWeight: pathname === '/emojilizer' ? '700' : '500',
+        padding: '0.5rem 1rem',
+        borderRadius: '0.5rem',
+        transition: 'all 0.3s ease',
+        background: pathname === '/emojilizer' ? 'rgba(37, 99, 235, 0.1)' : 'transparent'
+      }}>
+        Emojilizer
+      </Link>
       <Link href="/meta-report" style={{
         textDecoration: 'none',
         color: pathname === '/meta-report' ? 'var(--accent)' : 'var(--text-dim)',
