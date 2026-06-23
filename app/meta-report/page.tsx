@@ -48,6 +48,13 @@ export default function MetaReportPage() {
   const [error, setError] = useState<string>('');
   const [dragging, setDragging] = useState(false);
 
+  // ── Audience metric labelling toggle ──────────────────────────────────────
+  // OFF (default): show "Reach" / "Impressions".
+  // ON:            relabel the same numbers as "Viewers" / "Views".
+  const [useViewsLabel, setUseViewsLabel] = useState<boolean>(false);
+  const reachLabel = useViewsLabel ? 'Viewers' : 'Reach';
+  const impressionsLabel = useViewsLabel ? 'Views' : 'Impressions';
+
   // ─── Shared: push rows into the mapping pipeline ──────────────────────────
   const processRows = useCallback((rows: string[][], name: string) => {
     if (rows.length < 2) {
@@ -254,8 +261,8 @@ export default function MetaReportPage() {
     // 1. Prepare raw rows and formats for the slide deck table
     const headers = ["Metric", "Value"];
     const rows = [
-      ["Reach", formatNum(ad.reach)],
-      ["Impressions", formatNum(ad.impressions)],
+      [reachLabel, formatNum(ad.reach)],
+      [impressionsLabel, formatNum(ad.impressions)],
       ["Frequency", ad.frequency > 0 ? ad.frequency.toFixed(2) : "—"],
     ];
 
@@ -361,7 +368,7 @@ export default function MetaReportPage() {
         tableBtn.style.borderColor = '#bae6fd';
       }, 1500);
     }
-  }, [exportFontSize]);
+  }, [exportFontSize, reachLabel, impressionsLabel]);
 
   // ─── Chart Card Max Visual Limits Calculation ─────────────────────────────
   const maxValues = useMemo(() => {
@@ -586,6 +593,51 @@ export default function MetaReportPage() {
               </div>
             </div>
             
+            <div>
+              <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Audience Metric Labels</span>
+              <button
+                onClick={() => setUseViewsLabel(prev => !prev)}
+                title="Toggle how Reach/Impressions are labelled across the table, cards, and copied slides"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginTop: '0.3rem',
+                  padding: '0.4rem 0.65rem',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  color: '#1e293b',
+                }}
+              >
+                <span style={{
+                  position: 'relative',
+                  width: '34px',
+                  height: '18px',
+                  borderRadius: '999px',
+                  background: useViewsLabel ? '#2563eb' : '#cbd5e1',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
+                }}>
+                  <span style={{
+                    position: 'absolute',
+                    top: '2px',
+                    left: useViewsLabel ? '18px' : '2px',
+                    width: '14px',
+                    height: '14px',
+                    borderRadius: '50%',
+                    background: '#ffffff',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                  }} />
+                </span>
+                <span>{reachLabel} / {impressionsLabel}</span>
+              </button>
+            </div>
+
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button
                 className="btn-primary"
@@ -617,8 +669,8 @@ export default function MetaReportPage() {
                     <th style={{ width: '180px', padding: '0.75rem 0.5rem' }}>Campaign Name</th>
                     <th style={{ width: '180px', padding: '0.75rem 0.5rem' }}>Ad Name / Post ID</th>
                     <th style={{ width: '130px', padding: '0.75rem 0.5rem' }}>Objective</th>
-                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Reach</th>
-                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Impressions</th>
+                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>{reachLabel}</th>
+                    <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>{impressionsLabel}</th>
                     <th style={{ width: '70px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Freq</th>
                     <th style={{ width: '100px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>Results</th>
                     <th style={{ width: '90px', padding: '0.75rem 0.5rem', textAlign: 'right' }}>CPR ($)</th>
@@ -1015,7 +1067,7 @@ export default function MetaReportPage() {
                       {/* Reach */}
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#475569', marginBottom: '0.25rem' }}>
-                          <span>Reach</span>
+                          <span>{reachLabel}</span>
                           <strong>{ad.reach.toLocaleString()}</strong>
                         </div>
                         <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
@@ -1026,7 +1078,7 @@ export default function MetaReportPage() {
                       {/* Impressions */}
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#475569', marginBottom: '0.25rem' }}>
-                          <span>Impressions</span>
+                          <span>{impressionsLabel}</span>
                           <strong>{ad.impressions.toLocaleString()}</strong>
                         </div>
                         <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
