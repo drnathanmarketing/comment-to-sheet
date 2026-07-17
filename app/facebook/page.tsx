@@ -5,23 +5,22 @@ import TextInput from '@/components/TextInput';
 import CommentTable from '@/components/CommentTable';
 import SiteFooter from '@/components/SiteFooter';
 import ToolIcon from '@/components/ToolIcon';
-import { parseTiktokComments } from '@/lib/tiktok-parser';
-import { CommentEntry } from '@/lib/parser';
+import { parseComments, CommentEntry } from '@/lib/parser';
 
-export default function TiktokPage() {
+export default function FacebookTool() {
   const [data, setData] = useState<CommentEntry[]>([]);
 
   const handleParse = (text: string) => {
-    const parsed = parseTiktokComments(text);
+    const parsed = parseComments(text);
     setData(parsed);
   };
 
   return (
     <main className="container">
       <header className="header">
-        <span className="tool-logo" aria-hidden="true"><ToolIcon id="tiktok" size={40} /></span>
-        <h1>TikTok to Sheet</h1>
-        <p>Extract structured data from TikTok &ldquo;copy-pasted&rdquo; comments effortlessly.</p>
+        <span className="tool-logo" aria-hidden="true"><ToolIcon id="facebook" size={40} /></span>
+        <h1>Facebook to Sheet</h1>
+        <p>Extract structured names, comments and timestamps from copied Facebook comments — ready for Excel.</p>
       </header>
 
       <div className="glass-panel">

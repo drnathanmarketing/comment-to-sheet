@@ -15,8 +15,9 @@ const geistMono = Geist_Mono({
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "Comment to Sheet | Structured Data Tool",
-  description: "Extract names, comments and timestamps from Facebook and TikTok data into Excel.",
+  title: "Dr Nathan Tools | Marketing Toolkit",
+  description:
+    "A suite of marketing tools by Dr Nathan Marketing — extract comments to sheets, build ad reports, style text and more.",
 };
 
 export default function RootLayout({
@@ -25,7 +26,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+    >
       <body>
         <Navbar />
         {children}

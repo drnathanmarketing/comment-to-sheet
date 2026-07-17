@@ -3,6 +3,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import SiteFooter from '@/components/SiteFooter';
+import ToolIcon from '@/components/ToolIcon';
 import {
   MetaAdRow,
   ColumnMapping,
@@ -382,23 +384,13 @@ export default function MetaReportPage() {
   }, [parsedData]);
 
   return (
-    <main style={{ maxWidth: '1440px', margin: '0 auto', padding: '0 2rem 4rem 2rem' }}>
-      
+    <main style={{ maxWidth: '1440px', margin: '0 auto', padding: '2.5rem 2rem 4rem' }}>
+
       {/* ── Page Title / Header ── */}
-      <header style={{ textAlign: 'center', marginBottom: '3rem', animation: 'fadeInDown 0.7s ease-out' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-          <span style={{ fontSize: '2.5rem' }}>📈</span>
-          <h1 style={{
-            fontSize: '2.8rem',
-            fontWeight: 800,
-            background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-            WebkitBackgroundClip: 'text',
-            backgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            lineHeight: 1.15,
-          }}>Meta Ads Report Automator</h1>
-        </div>
-        <p style={{ color: '#64748b', fontSize: '1.1rem', maxWidth: '580px', margin: '0 auto' }}>
+      <header className="header">
+        <span className="tool-logo" aria-hidden="true"><ToolIcon id="meta-report" size={40} /></span>
+        <h1>Meta Ads Report Automator</h1>
+        <p>
           Ingest messy Meta Ads spreadsheets, automatically detect standard and advanced performance metrics, review custom dashboards, and copy rich formats.
         </p>
       </header>
@@ -1236,6 +1228,8 @@ export default function MetaReportPage() {
           100% { transform: rotate(360deg); }
         }
       `}</style>
+
+      <SiteFooter />
     </main>
   );
 }

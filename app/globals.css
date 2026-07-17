@@ -1,12 +1,41 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Dr Nathan Tools — design system
+   Light-mode, token-driven. Shared classes so pages stop reinventing layout.
+   ───────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --bg: #f8fafc;
-  --panel: rgba(255, 255, 255, 0.8);
+  /* Surfaces */
+  --bg: #f5f7fb;
+  --panel: rgba(255, 255, 255, 0.72);
+  --panel-solid: #ffffff;
+  --panel-muted: #f1f5f9;
+
+  /* Brand / accents */
   --accent: #2563eb;
-  --text: #1e293b;
+  --accent-hover: #1d4ed8;
+  --accent-2: #7c3aed;
+  --accent-soft: rgba(37, 99, 235, 0.1);
+
+  /* Text */
+  --text: #0f172a;
   --text-dim: #64748b;
-  --border: rgba(226, 232, 240, 0.8);
+  --text-faint: #94a3b8;
+
+  /* Lines & effects */
+  --border: rgba(226, 232, 240, 0.9);
+  --border-strong: #e2e8f0;
   --glass: blur(12px);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+  /* Radii */
+  --radius-sm: 0.5rem;
+  --radius: 0.75rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.5rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.08);
+  --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.06);
+  --shadow-lg: 0 20px 25px -5px rgb(15 23 42 / 0.1), 0 8px 10px -6px rgb(15 23 42 / 0.08);
 }
 
 * {
@@ -15,100 +44,375 @@
   padding: 0;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--bg);
-  background-image: radial-gradient(circle at 0% 0%, #eff6ff 0%, #f8fafc 100%);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(1000px circle at 0% -10%, #e8eeff 0%, transparent 55%),
+    radial-gradient(900px circle at 100% 0%, #f2ebff 0%, transparent 45%);
+  background-attachment: fixed;
   color: var(--text);
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   min-height: 100vh;
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+::selection {
+  background: rgba(37, 99, 235, 0.18);
+  color: var(--text);
+}
+
+/* Accessible focus ring for keyboard users, everywhere. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Layout shells ──────────────────────────────────────────────────────── */
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 2.5rem 2rem 4rem;
 }
 
 .header {
   text-align: center;
   margin-bottom: 3rem;
-  animation: fadeInDown 0.8s ease-out;
+  animation: fadeInDown 0.7s ease-out;
+}
+
+.header .badge {
+  margin-bottom: 1.1rem;
+}
+
+/* Dr Nathan logo in the hub hero */
+.hero-logo {
+  display: block;
+  height: 88px;
+  width: auto;
+  margin: 0 auto 1.5rem;
+  border-radius: 1rem;
+  box-shadow: var(--shadow-md);
+}
+
+/* Per-tool brand logo chip above each tool page heading */
+.header .tool-logo {
+  display: inline-grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-bottom: 1.25rem;
+  border-radius: 1.25rem;
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+.header .tool-logo svg {
+  display: block;
 }
 
 .header h1 {
-  font-size: 3rem;
+  font-size: clamp(2.1rem, 5vw, 3rem);
   font-weight: 800;
-  color: var(--accent);
-  background: linear-gradient(to right, #2563eb, #4f46e5);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  background: linear-gradient(120deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .header p {
   color: var(--text-dim);
   font-size: 1.1rem;
+  max-width: 42rem;
+  margin: 0 auto;
 }
+
+/* ── Cards / panels ─────────────────────────────────────────────────────── */
 
 .glass-panel {
   background: var(--panel);
   backdrop-filter: var(--glass);
+  -webkit-backdrop-filter: var(--glass);
   border: 1px solid var(--border);
-  border-radius: 1.5rem;
+  border-radius: var(--radius-xl);
   padding: 2rem;
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  box-shadow: var(--shadow-lg);
 }
 
 .input-area {
   margin-bottom: 2rem;
 }
 
+/* ── Forms ──────────────────────────────────────────────────────────────── */
+
 textarea {
   width: 100%;
   min-height: 200px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
+  background: var(--panel-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
   padding: 1rem;
   color: var(--text);
   font-family: inherit;
   font-size: 1rem;
   resize: vertical;
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
 .btn-primary {
-  background: var(--accent);
+  background: linear-gradient(120deg, var(--accent), #4f46e5);
   color: #ffffff;
   border: none;
-  padding: 1rem 2rem;
-  border-radius: 0.75rem;
+  padding: 0.85rem 1.75rem;
+  border-radius: var(--radius);
   font-weight: 700;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 10px 20px -6px rgba(37, 99, 235, 0.45);
 }
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-strong);
+  padding: 0.85rem 1.5rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-secondary:hover {
+  background: var(--panel-muted);
+  color: var(--text);
+  border-color: var(--text-faint);
+}
+
+/* ── Top navigation ─────────────────────────────────────────────────────── */
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1rem 1.75rem;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: var(--glass);
+  -webkit-backdrop-filter: var(--glass);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-brand .brand-logo {
+  height: 2.2rem;
+  width: auto;
+  display: block;
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-brand .brand-suffix {
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-links::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s ease, background 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: var(--text);
+  background: var(--panel-muted);
+}
+
+.nav-link.active {
+  color: var(--accent);
+  font-weight: 700;
+  background: var(--accent-soft);
+}
+
+/* ── Tool hub grid ──────────────────────────────────────────────────────── */
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.tool-card {
+  --card-accent: var(--accent);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.75rem;
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.tool-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--card-accent);
+  opacity: 0.9;
+}
+
+.tool-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: color-mix(in srgb, var(--card-accent) 40%, var(--border));
+}
+
+.tool-card .tool-icon {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: var(--radius);
+  font-size: 1.5rem;
+  background: color-mix(in srgb, var(--card-accent) 12%, #fff);
+  border: 1px solid color-mix(in srgb, var(--card-accent) 18%, transparent);
+}
+
+.tool-card .tool-icon svg {
+  display: block;
+}
+
+.tool-card h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tool-card p {
+  font-size: 0.92rem;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+
+.tool-card .tool-cta {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--card-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.tool-card:hover .tool-cta {
+  gap: 0.55rem;
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+/* ── Tables (Facebook / TikTok tools) ───────────────────────────────────── */
 
 .table-wrapper {
   overflow-x: auto;
-  border-radius: 1rem;
+  border-radius: var(--radius-lg);
   margin-top: 2rem;
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 table {
@@ -118,18 +422,23 @@ table {
 }
 
 th {
-  background: #f1f5f9;
+  background: var(--panel-muted);
   padding: 1rem;
   font-weight: 600;
   color: var(--text);
   border-bottom: 2px solid var(--border);
+  white-space: nowrap;
 }
 
 td {
   padding: 1rem;
   border-bottom: 1px solid var(--border);
   vertical-align: top;
-  background: #ffffff;
+  background: var(--panel-solid);
+}
+
+tr:last-child td {
+  border-bottom: none;
 }
 
 tr:hover td {
@@ -138,34 +447,26 @@ tr:hover td {
 
 .editable-input {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--text);
   width: 100%;
   padding: 0.5rem;
-  border-radius: 0.4rem;
-  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .editable-input:focus {
-  background: #ffffff;
-  border: 1px solid var(--accent);
+  background: var(--panel-solid);
+  border-color: var(--accent);
   outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* ── Misc ───────────────────────────────────────────────────────────────── */
 
 .empty-state {
   text-align: center;
-  padding: 4rem;
+  padding: 4rem 2rem;
   color: var(--text-dim);
 }
 
@@ -174,11 +475,71 @@ tr:hover td {
   height: 20px;
 }
 
-footer {
+footer,
+.site-footer {
   margin-top: 4rem;
   padding: 2rem;
   text-align: center;
   color: var(--text-dim);
   font-size: 0.9rem;
   border-top: 1px solid var(--border);
+}
+
+.site-footer strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1.75rem 1.25rem 3rem;
+  }
+
+  .header {
+    margin-bottom: 2rem;
+  }
+
+  .site-nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+  }
+
+  .nav-brand {
+    justify-content: center;
+  }
+
+  .nav-links {
+    justify-content: flex-start;
+    padding-bottom: 0.15rem;
+  }
+
+  .glass-panel {
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -20,11 +20,10 @@ export default function TextInput({ onParse }: TextInputProps) {
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
-      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
-        <button 
+      <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <button
           onClick={handleClear}
-          className="btn-primary" 
-          style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)' }}
+          className="btn-secondary"
         >
           Clear
         </button>

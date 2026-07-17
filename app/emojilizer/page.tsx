@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import SiteFooter from '@/components/SiteFooter';
+import ToolIcon from '@/components/ToolIcon';
 
 const FB_LIMIT = 63206;
 
@@ -63,18 +65,17 @@ export default function Emojilizer() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', padding: '2rem' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', marginTop: '2.5rem' }}>
+    <main className="container">
+      <div>
 
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1rem', color: '#111827' }}>
-            ✨ Emojilizer
-          </h1>
-          <p style={{ fontSize: '1.125rem', color: '#4b5563', maxWidth: '44rem', margin: '0 auto' }}>
+        <header className="header">
+          <span className="tool-logo" aria-hidden="true"><ToolIcon id="emojilizer" size={40} /></span>
+          <h1>Emojilizer</h1>
+          <p>
             Paste your Facebook post and let AI add the perfect emojis — professionally tuned for medical and health-focused content.
           </p>
-        </div>
+        </header>
 
         {/* Error Banner */}
         {error && (
@@ -236,14 +237,9 @@ export default function Emojilizer() {
 
         </div>
 
-        {/* Footer */}
-        <div style={{ textAlign: 'center', marginTop: '3rem', paddingBottom: '2rem' }}>
-          <p style={{ color: 'var(--text-dim)', fontSize: '0.875rem' }}>
-            Built for Dr Nathan Marketing and Consultancy by Shain Wai Yan
-          </p>
-        </div>
+        <SiteFooter />
 
       </div>
-    </div>
+    </main>
   );
 }

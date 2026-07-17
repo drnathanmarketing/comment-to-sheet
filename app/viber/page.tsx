@@ -2,6 +2,8 @@
 
 import React, { useState, useCallback } from 'react';
 import * as XLSX from 'xlsx';
+import SiteFooter from '@/components/SiteFooter';
+import ToolIcon from '@/components/ToolIcon';
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface ViberMessages {
@@ -221,22 +223,12 @@ export default function ViberPage() {
   const summary = data ? calcSummary(data.daily_metrics) : null;
 
   return (
-    <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem' }}>
+    <main className="container">
       {/* ── Header ── */}
-      <header style={{ textAlign: 'center', marginBottom: '3rem', animation: 'fadeInDown 0.7s ease-out' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-          <span style={{ fontSize: '2.5rem' }}>📊</span>
-          <h1 style={{
-            fontSize: '2.8rem',
-            fontWeight: 800,
-            background: 'linear-gradient(135deg, #7c3aed, #2563eb)',
-            WebkitBackgroundClip: 'text',
-            backgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            lineHeight: 1.15,
-          }}>Viber Insights</h1>
-        </div>
-        <p style={{ color: '#64748b', fontSize: '1.1rem', maxWidth: '560px', margin: '0 auto' }}>
+      <header className="header">
+        <span className="tool-logo" aria-hidden="true"><ToolIcon id="viber" size={40} /></span>
+        <h1>Viber Insights</h1>
+        <p>
           Upload your Viber community JSON export and instantly convert it to a professional Excel report.
         </p>
       </header>
@@ -519,9 +511,7 @@ export default function ViberPage() {
         </div>
       )}
 
-      <footer style={{ marginTop: '4rem', padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem', borderTop: '1px solid var(--border)' }}>
-        Built for Dr Nathan Marketing and Consultancy by Shain Wai Yan
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

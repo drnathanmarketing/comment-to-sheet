@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import SiteFooter from "@/components/SiteFooter";
+import ToolIcon from "@/components/ToolIcon";
 
 function toBold(text: string) {
   let result = "";
@@ -46,19 +48,18 @@ export default function BoldTextMaker() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', padding: '2rem' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', marginTop: '2.5rem' }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '3rem', fontWeight: 800, fontFamily: "serif", marginBottom: '1rem', color: '#111827' }}>
-            Bold Text Maker
-          </h1>
-          <p style={{ fontSize: '1.125rem', color: '#4b5563', maxWidth: '42rem', margin: '0 auto' }}>
-            Convert your English text to bold automatically. Perfect for Facebook posts! It also smartly adds spacing between English and Burmese text.
-          </p>
-        </div>
+    <main className="container">
+      <header className="header">
+        <span className="tool-logo" aria-hidden="true"><ToolIcon id="bold-text-maker" size={38} /></span>
+        <h1>Bold Text Maker</h1>
+        <p>
+          Convert your English text to bold automatically. Perfect for Facebook posts! It also smartly adds spacing between English and Burmese text.
+        </p>
+      </header>
 
-        <div style={{ display: 'flex', gap: '2rem', background: 'white', borderRadius: '1rem', padding: '1.5rem', border: '1px solid #e5e7eb', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div>
+        <div className="glass-panel" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '260px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.25rem' }}>
               <label style={{ fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: '#374151' }}>Input</label>
               <button 
@@ -102,6 +103,8 @@ export default function BoldTextMaker() {
           </div>
         </div>
       </div>
-    </div>
+
+      <SiteFooter />
+    </main>
   );
 }
